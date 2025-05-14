@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
@@ -7,19 +7,35 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import type { LinkedInProfile } from '../types';
 import { messageApi } from '../services/api';
 
-const sampleProfile: LinkedInProfile = {
-  name: "John Doe",
-  job_title: "Senior Software Engineer",
-  company: "TechCorp",
-  location: "San Francisco, CA",
-  summary: "Experienced software engineer with 5+ years in full-stack development, specializing in React, Node.js, and cloud technologies. Passionate about building scalable applications and mentoring junior developers."
+const LOCAL_STORAGE_KEY = 'messageGeneratorFormData';
+
+const emptyProfile: LinkedInProfile = {
+  name: '',
+  job_title: '',
+  company: '',
+  location: '',
+  summary: '',
 };
 
+function getInitialProfile() {
+  const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch {}
+  }
+  return emptyProfile;
+}
+
 export function MessageGenerator() {
-  const [profile, setProfile] = useState<LinkedInProfile>(sampleProfile);
+  const [profile, setProfile] = useState<LinkedInProfile>(getInitialProfile);
   const [message, setMessage] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
+
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(profile));
+  }, [profile]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +49,13 @@ export function MessageGenerator() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleClear = () => {
+    setProfile(emptyProfile);
+    setMessage('');
+    setError('');
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
   };
 
   return (
@@ -99,9 +122,14 @@ export function MessageGenerator() {
               />
             </div>
 
-            <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
-              {isLoading ? 'Generating...' : 'Generate Message'}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full">
+              <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
+                {isLoading ? 'Generating...' : 'Generate Message'}
+              </Button>
+              <Button type="button" variant="secondary" onClick={handleClear} className="w-full sm:w-auto">
+                Clear Form
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>

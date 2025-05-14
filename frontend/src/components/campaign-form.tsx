@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
-import type { Campaign } from '../types';
+import type { Campaign, CampaignStatus } from '../types';
+
+const LOCAL_STORAGE_KEY = 'campaignFormData';
 
 interface CampaignFormProps {
   initialData?: Partial<Campaign>;
@@ -12,14 +14,31 @@ interface CampaignFormProps {
   isLoading?: boolean;
 }
 
+const defaultFormData: Omit<Campaign, '_id'> = {
+  name: '',
+  description: '',
+  status: 'ACTIVE',
+  leads: [''],
+  accountIDs: [],
+};
+
+function getInitialFormData() {
+  const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch {}
+  }
+  return defaultFormData;
+}
+
 export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormProps) {
-  const [formData, setFormData] = useState<Omit<Campaign, '_id'>>({
-    name: initialData?.name || '',
-    description: initialData?.description || '',
-    status: initialData?.status || 'ACTIVE',
-    leads: initialData?.leads || [''],
-    accountIDs: initialData?.accountIDs || [],
-  });
+  const [formData, setFormData] = useState<Omit<Campaign, '_id'>>(getInitialFormData);
+
+  // Save to localStorage on change
+  useEffect(() => {
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formData));
+  }, [formData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +58,11 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
   const removeLeadField = (index: number) => {
     const newLeads = formData.leads.filter((_, i) => i !== index);
     setFormData({ ...formData, leads: newLeads });
+  };
+
+  const handleClear = () => {
+    setFormData({ ...defaultFormData, leads: [''] });
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
   };
 
   return (
@@ -70,7 +94,7 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
           id="status"
           checked={formData.status === 'ACTIVE'}
           onCheckedChange={(checked) =>
-            setFormData({ ...formData, status: checked ? 'ACTIVE' : 'INACTIVE' })
+            setFormData({ ...formData, status: checked ? 'ACTIVE' : 'INACTIVE' as CampaignStatus })
           }
         />
         <Label htmlFor="status">
@@ -106,9 +130,14 @@ export function CampaignForm({ initialData, onSubmit, isLoading }: CampaignFormP
         </Button>
       </div>
 
-      <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
-        {isLoading ? 'Saving...' : initialData ? 'Update Campaign' : 'Create Campaign'}
-      </Button>
+      <div className="flex flex-col sm:flex-row gap-2 w-full">
+        <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
+          {isLoading ? 'Saving...' : initialData ? 'Update Campaign' : 'Create Campaign'}
+        </Button>
+        <Button type="button" variant="secondary" onClick={handleClear} className="w-full sm:w-auto">
+          Clear Form
+        </Button>
+      </div>
     </form>
   );
 } 
